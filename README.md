@@ -14,9 +14,7 @@ Smart heated jacket that can be controlled from a mobile app. Final project for 
 
 ### BLE Client on Embedded System for App Communication
 
-rasppi: https://stackoverflow.com/questions/56461087/programming-a-ble-server-and-a-client-both-in-a-raspberry-pi
-esp32: https://randomnerdtutorials.com/esp32-ble-server-client/
-
+- [ ] Set up server/client for ESP32 [link](https://randomnerdtutorials.com/esp32-ble-server-client/)
 - [ ] Report temperature to the app
 - [ ] Be able to accept commands from the app to change the target temperature
 
