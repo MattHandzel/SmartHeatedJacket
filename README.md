@@ -1,6 +1,6 @@
 # SmartHeatedJacket
 
-Smart heated jacket that can be controlled from a mobile app.
+Smart heated jacket that can be controlled from a mobile app. Final project for CS 437: Wireless Internet of Things.
 
 ### Directory Structure
 
