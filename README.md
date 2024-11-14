@@ -1,6 +1,16 @@
 # SmartHeatedJacket
 
-TODO:
+Smart heated jacket that can be controlled from a mobile app.
+
+### Directory Structure
+
+```
+├──  App -- Code for mobile app
+├──  Firmware -- Code for firmware to be run on an ESP32
+├──  Hardware -- Pictures of the hardware, circuit diagram
+```
+
+## TODO
 
 ### BLE Client on Embedded System for App Communication
 
