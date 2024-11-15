@@ -10,8 +10,6 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.bind((TCP_IP, TCP_PORT))
 
 
-
-
 while True:
     # go into low power mode if the user isn't wearing the jacket
     if not is_wearing_jacket():
