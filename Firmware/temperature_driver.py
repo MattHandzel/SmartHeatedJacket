@@ -1,3 +1,5 @@
+from temperature import read_temp
 
 def get_temperature():
-    pass
+    celcius, _ = read_temp()
+    return celcius
