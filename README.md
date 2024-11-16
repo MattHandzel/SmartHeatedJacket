@@ -59,3 +59,4 @@ Stretch Goals:
 
 - [ ] Should we get a thermal camera for the demo to show that it is working?
 
+`pip install setuptools bless Adafruit-Blinka adafruit-circuitpython-ads1x15`
