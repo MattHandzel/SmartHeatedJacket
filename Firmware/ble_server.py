@@ -10,12 +10,13 @@ from typing import Any, Union
 
 from bless import (
     BlessServer,
-    BlessGATTCharacteristic,
     GATTCharacteristicProperties,
     GATTAttributePermissions,
 )
 
 from heated_fabric_driver import heat_fabric
+from pressure_driver import get_pressure
+from temperature_driver import get_temperature
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(name=__name__)
@@ -32,12 +33,15 @@ def set_temperature(_, value: Any, **kwargs):
     temperature = int(value.decode('utf-8'))
     heat_fabric(temperature)
 
+def get_temperature_and_pressure(_, **kwargs) -> bytearray:
+    return f"{get_temperature()}, {get_pressure()}".encode('utf-8')
 
 async def run(loop):
     trigger.clear()
 
     # Instantiate the server
     server = BlessServer(name="temperature_server", loop=loop)
+    server.read_request_func = get_temperature_and_pressure
     server.write_request_func = set_temperature
 
     # Add Service
@@ -48,9 +52,10 @@ async def run(loop):
     my_char_uuid = "51FF12BB-3ED8-46E5-B4F9-D64E2FEC021B"
     char_flags = (
         GATTCharacteristicProperties.write
+        | GATTCharacteristicProperties.read
         | GATTCharacteristicProperties.indicate
     )
-    permissions = GATTAttributePermissions.writeable
+    permissions = GATTAttributePermissions.writeable | GATTAttributePermissions.readable
     await server.add_new_characteristic(
         my_service_uuid, my_char_uuid, char_flags, None, permissions
     )
