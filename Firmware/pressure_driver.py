@@ -18,8 +18,8 @@ i2c = busio.I2C(board.SCL, board.SDA)
 ads = ADS.ADS1015(i2c)
 ads.mode = Mode.CONTINUOUS
 
-# Single-ended mode, FSR is being read into analog pin 0
-chan = AnalogIn(ads, ADS.P0)
+# Single-ended mode, FSR is being read into analog pin 1
+chan = AnalogIn(ads, ADS.P1)
 
 cv = Condition()
 

@@ -16,7 +16,7 @@ from bless import (
 
 from heated_fabric_driver import heat_fabric
 from pressure_driver import get_pressure
-from temperature_driver import get_temperature
+from temperature_driver import get_celcius
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(name=__name__)
@@ -34,7 +34,7 @@ def set_temperature(_, value: Any, **kwargs):
     heat_fabric(temperature)
 
 def get_temperature_and_pressure(_, **kwargs) -> bytearray:
-    return f"{get_temperature()}, {get_pressure()}".encode('utf-8')
+    return f"{get_celcius()}, {get_pressure()}".encode('utf-8')
 
 async def run(loop):
     trigger.clear()
