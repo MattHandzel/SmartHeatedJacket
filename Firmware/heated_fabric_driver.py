@@ -108,6 +108,7 @@ class HeatedFabricDriver:
 
 
 if __name__ == "__main__":
+    # Collect some graphs, tune PID
     heated_fabric_driver = HeatedFabricDriver(pin=HEAT_PIN, kP=20, kI=0.6, kD=30, kF=0)
     start_time = time.time()
 
@@ -125,6 +126,3 @@ if __name__ == "__main__":
         print(round(time.time() - start_time), get_fahrenheit())
 
         time.sleep(0.5)
-
-        # heated_fabric_driver.update()
-        # time.sleep(1)

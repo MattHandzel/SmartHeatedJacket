@@ -24,23 +24,33 @@ def read_data(file_path):
     return data
 
 
-def create_plot(data, output_path):
-    x, y = zip(*data)
+def create_plot(data, labels, output_path, title):
     plt.figure()
-    plt.plot(x, y, marker="o")
+
+    for dataset, label in zip(data, labels):
+        x, y = zip(*dataset)
+        plt.plot(x, y, marker="o", label=label)
     plt.xlabel("Time")
-    plt.ylabel("Value")
-    plt.title("Experiment Data")
+    plt.ylabel("Temperature")
+    plt.title(title)
+    plt.legend()
     plt.savefig(output_path)
     plt.close()
 
 
 def main():
-    files = glob.glob("experiment_*.txt")
+    files = glob.glob("voltage_experiment_*.txt")
+    datas = []
     for file in files:
-        data = read_data(file)
-        output_path = file.replace(".txt", ".png")
-        create_plot(data, output_path)
+        datas.append(read_data(file))
+        print("looking at file", file)
+        # output_path = file.replace(".txt", ".png")
+    create_plot(
+        datas,
+        ["12 V", "15 V", "5 V"],
+        "./varying_voltage_experiment.png",
+        "Impact on Temperature Versus Voltage and Time",
+    )
 
 
 if __name__ == "__main__":
