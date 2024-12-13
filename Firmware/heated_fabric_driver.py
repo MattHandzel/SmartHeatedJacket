@@ -82,9 +82,9 @@ class HeatedFabricDriver:
             output = 100
         else:
 
-            if abs(error) < self.temperature_threshold:
-                error = 0
-                logger.debug("Error within threshold. Setting error to 0.")
+            # if abs(error) < self.temperature_threshold:
+            #     error = 0
+            #     logger.debug("Error within threshold. Setting error to 0.")
 
             # PID controller output
             if delta_time > 10:
@@ -108,15 +108,16 @@ class HeatedFabricDriver:
 
 
 if __name__ == "__main__":
-    heated_fabric_driver = HeatedFabricDriver(pin=HEAT_PIN, kP=30, kI=0.8, kD=30, kF=0)
+    heated_fabric_driver = HeatedFabricDriver(pin=HEAT_PIN, kP=20, kI=0.6, kD=30, kF=0)
     start_time = time.time()
 
-    voltage = 20
-    file = open(f"experiment_{voltage}.txt", "w")
+    voltage = 12
+    file = open(f"experiment_pid_{voltage}_2.txt", "w")
 
-    # heated_fabric_driver.update_temperature(100)
+    heated_fabric_driver.update_temperature(90)
     while round(time.time() - start_time) < 300:  # 5 minutes
-        heated_fabric_driver.heat_fabric(100)
+
+        heated_fabric_driver.update()
 
         # print temp
         file.write(f"{round(time.time() - start_time)},{get_fahrenheit()}\n")
