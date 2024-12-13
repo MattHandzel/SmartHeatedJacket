@@ -111,7 +111,7 @@ if __name__ == "__main__":
     heated_fabric_driver = HeatedFabricDriver(pin=HEAT_PIN, kP=30, kI=0.8, kD=30, kF=0)
     start_time = time.time()
 
-    voltage = 15
+    voltage = 20
     file = open(f"experiment_{voltage}.txt", "w")
 
     # heated_fabric_driver.update_temperature(100)
