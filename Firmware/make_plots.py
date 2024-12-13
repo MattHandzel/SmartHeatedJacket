@@ -30,6 +30,8 @@ def create_plot(data, labels, output_path, title):
     for dataset, label in zip(data, labels):
         x, y = zip(*dataset)
         plt.plot(x, y, marker="o", label=label)
+
+    plt.plot([x[0], x[-1]], [90, 90], linestyle="--", color="red", label="Setpoint")
     plt.xlabel("Time")
     plt.ylabel("Temperature")
     plt.title(title)
@@ -39,7 +41,20 @@ def create_plot(data, labels, output_path, title):
 
 
 def main():
-    files = glob.glob("voltage_experiment_*.txt")
+    # files = glob.glob("voltage_experiment_*.txt")
+    # datas = []
+    # for file in files:
+    #     datas.append(read_data(file))
+    #     print("looking at file", file)
+    #     # output_path = file.replace(".txt", ".png")
+    # create_plot(
+    #     datas,
+    #     ["12 V", "15 V", "5 V"],
+    #     "./varying_voltage_experiment.png",
+    #     "Impact on Temperature Versus Voltage and Time",
+    # )
+
+    files = glob.glob("experiment_pid_12_2.txt")
     datas = []
     for file in files:
         datas.append(read_data(file))
@@ -47,8 +62,8 @@ def main():
         # output_path = file.replace(".txt", ".png")
     create_plot(
         datas,
-        ["12 V", "15 V", "5 V"],
-        "./varying_voltage_experiment.png",
+        ["Temperature with 12 V"],
+        "./pid_setpoint_experiment.png",
         "Impact on Temperature Versus Voltage and Time",
     )
 
