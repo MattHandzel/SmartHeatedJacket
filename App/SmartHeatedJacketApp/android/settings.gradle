@@ -1,6 +1,17 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
-plugins { id("com.facebook.react.settings") }
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
-rootProject.name = 'SmartHeatedJacketApp'
-include ':app'
-includeBuild('../node_modules/@react-native/gradle-plugin')
+
+rootProject.name = "SmartHeatedJacketApp"
+
+include(":app")
+include(":expo-modules-core")
+include(":expo-asset")
+include(":expo-file-system")
+include(":expo-constants")
+include(":expo-font")
+include(":expo-keep-awake")
+
+project(":expo-modules-core").projectDir = new File(rootProject.projectDir, "../node_modules/expo-modules-core/android")
+project(":expo-asset").projectDir = new File(rootProject.projectDir, "../node_modules/expo-asset/android")
+project(":expo-file-system").projectDir = new File(rootProject.projectDir, "../node_modules/expo-file-system/android")
+project(":expo-constants").projectDir = new File(rootProject.projectDir, "../node_modules/expo-constants/android")
+project(":expo-font").projectDir = new File(rootProject.projectDir, "../node_modules/expo-font/android")
+project(":expo-keep-awake").projectDir = new File(rootProject.projectDir, "../node_modules/expo-keep-awake/android")

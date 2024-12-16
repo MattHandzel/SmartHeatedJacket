@@ -8,344 +8,125 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  PermissionsAndroid,
-  Platform,
   Alert,
+  Platform,
 } from 'react-native';
-import { BleManager, Device, Service, Characteristic } from 'react-native-ble-plx';
-import base64 from 'react-native-base64';
-import { DEVICE_NAME } from './config';
-import { SERVICE_CHARACTERISTICS, ServiceCharacteristicsRegistry } from './serviceCharacteristicRegistry';
-import { TargetTemperatureCharacteristic, CharacteristicsMap } from './types';
+import BLEManager, { BLEDevice } from './src/BLEManager';
+import { DEVICE_NAME, SERVICE_UUID, TEMPERATURE_CHAR_UUID } from './src/config';
 
 const App: React.FC = () => {
-  const [manager] = useState<BleManager>(new BleManager());
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [connectedDevice, setConnectedDevice] = useState<Device | null>(null);
+  const [devices, setDevices] = useState<BLEDevice[]>([]);
+  const [connectedDevice, setConnectedDevice] = useState<BLEDevice | null>(null);
+  const [connectedServer, setConnectedServer] = useState<BluetoothRemoteGATTServer | null>(null);
   const [temperature, setTemperature] = useState<number | null>(null);
+  const [pressure, setPressure] = useState<number | null>(null);
   const [targetTemp, setTargetTemp] = useState<string>('');
   const [faults, setFaults] = useState<string>('');
-  
-  const [characteristicsMap, setCharacteristicsMap] = useState<CharacteristicsMap>({});
+
+  const [targetTempServiceUUID, setTargetTempServiceUUID] = useState<string>('');
+  const [targetTempCharUUID, setTargetTempCharUUID] = useState<string>('');
 
   useEffect(() => {
-    const startScan = async () => {
-      //Check both android and ios
-      if (Platform.OS === 'android') {
-        const apiLevel = Platform.Version;
-        const permissions: string[] = [];
-        permissions.push(
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
-          PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-        );
-        const granted = await PermissionsAndroid.requestMultiple(permissions);
-        const allGranted = Object.values(granted).every(
-          (status) => status === PermissionsAndroid.RESULTS.GRANTED
-        );
-
-        if (!allGranted) {
-          Alert.alert('Permissions required', 'Bluetooth permissions are required');
-          return;
-        }
-      }
-      manager.startDeviceScan(null, { allowDuplicates: false }, (error, device) => {
-        if (error) {
-          console.log(error);
-          Alert.alert('Scaningn error', error.message);
-          return;
-        }
-
-        if (device.name && device.name.includes(DEVICE_NAME)) {
-          setDevices((prevDevices) => {
-            if (!prevDevices.find((d) => d.id === device.id)) {
-              return [...prevDevices, device];
-            }
-            return prevDevices;
-          });
-        }
-      });
-    };
-
-    startScan();
+    console.log('App mounted');
+    if (Platform.OS !== 'web') {
+      BLEManager.requestPermissions()
+        .then(() => console.log('Permissions granted'))
+        .catch((error) => console.error('Permission request error:', error));
+    }
 
     return () => {
-      manager.stopDeviceScan();
-      manager.destroy();
-    };
-  }, [manager]);
-
-  const connectToDevice = async (device: Device) => {
-    try {
-      const connected = await device.connect();
-      setConnectedDevice(connected);
-      await connected.discoverAllServicesAndCharacteristics();
-      const services: Service[] = await connected.services();
-
-      console.log('Discovered Services:', services);
-      let charMap: CharacteristicsMap = { ...characteristicsMap };
-      for (const service of services) {
-        const serviceUUID = service.uuid.toUpperCase();
-        const serviceInfo: ServiceCharacteristicsRegistry[keyof ServiceCharacteristicsRegistry] | undefined = SERVICE_CHARACTERISTICS[serviceUUID];
-        if (serviceInfo) {
-          const characteristics: Characteristic[] = await connected.characteristicsForService(service.uuid);
-          console.log(`Service ${service.uuid} (${serviceInfo.name}) has characteristics:`, characteristics);
-
-          characteristics.forEach((char) => {
-            const charUUID = char.uuid.toUpperCase();
-            const charName = serviceInfo.characteristics[charUUID];
-            if (charName) {
-              switch (charName) {
-                case 'Temperature Data':
-                  subscribeToTemperature(connected, service.uuid, char.uuid);
-                  break;
-                case 'Faults Data':
-                  subscribeToFaults(connected, service.uuid, char.uuid);
-                  break;
-                case 'Target Temperature Control':
-                  setTargetTemperatureCharacteristic(service.uuid, char.uuid);
-                  break;
-                default:
-                  console.log('Unhandled characteristic:', charName);
-              }
-            }
-          });
-        } else {
-          console.log('Unknown service:', service.uuid);
-        }
+      if (connectedDevice && Platform.OS !== 'web') {
+        console.log(`Disconnecting from device on unmount: ${connectedDevice.name}`);
+        BLEManager.disconnect(connectedDevice)
+          .then(() => console.log('Disconnected successfully'))
+          .catch((error) => console.error('Error during disconnect on unmount:', error));
       }
-      setCharacteristicsMap(charMap);
+      if (connectedServer && Platform.OS === 'web') {
+        console.log(`Disconnecting from server on unmount`);
+        BLEManager.disconnect(connectedServer)
+          .then(() => console.log('Disconnected successfully'))
+          .catch((error) => console.error('Error during disconnect on unmount:', error));
+      }
+    };
+  }, [connectedDevice, connectedServer]);
+
+  const scanForDevices = async () => {
+    console.log('Starting device scan...');
+    try {
+      const foundDevices = await BLEManager.startScan(SERVICE_UUID);
+      console.log('Scan completed. Found devices:', foundDevices);
+      setDevices(foundDevices);
     } catch (error: any) {
-      console.log('Connection error:', error);
-      Alert.alert('Connection error', error.message);
+      console.error('Error during device scan:', error);
+      Alert.alert('Error', `Device scan failed: ${error.message}`);
     }
   };
 
-  const setTargetTemperatureCharacteristic = (serviceUUID: string, charUUID: string) => {
-    setCharacteristicsMap((prev) => ({
-      ...prev,
-      targetTemp: { serviceUUID, charUUID },
-    }));
-  };
+  const connectToDevice = async (device: BLEDevice) => {
+    console.log(`Attempting to connect to device: ${device.name} (${device.id})`);
+    try {
+      if (Platform.OS !== 'web') {
+        await BLEManager.connect(device);
+        setConnectedDevice(device);
+        Alert.alert('Connected', `Connected to ${device.name}`);
+        setTargetTempServiceUUID(SERVICE_UUID);
+        setTargetTempCharUUID(TEMPERATURE_CHAR_UUID);
 
-  const subscribeToTemperature = (device: Device, serviceUUID: string, charUUID: string) => {
-    device.monitorCharacteristicForService(serviceUUID, charUUID, (error, characteristic) => {
-      if (error) {
-        console.log('Temperature subscription error:', error);
-        return;
-      }
-
-      if (characteristic?.value) {
-        const data = base64.decode(characteristic.value);
-        try {
-          const parsedData = JSON.parse(data);
-          if (parsedData.type === 'temperature') {
-            setTemperature(parsedData.value);
+        await BLEManager.monitorCharacteristic(
+          device,
+          SERVICE_UUID,
+          TEMPERATURE_CHAR_UUID,
+          (data: string) => {
+            console.log(`Data received from Temperature Control characteristic: ${data}`);
+            const [tempStr, pressureStr] = data.split(',').map((s) => s.trim());
+            const temp = parseFloat(tempStr);
+            const pressureVal = parseFloat(pressureStr);
+            if (!isNaN(temp) && !isNaN(pressureVal)) {
+              setTemperature(temp);
+              setPressure(pressureVal);
+              console.log(`Parsed temperature: ${temp}°F, pressure: ${pressureVal} hPa`);
+            } else {
+              console.warn('Received invalid data format:', data);
+            }
           }
-          if (parsedData.type === 'faults') {
-            setFaults(parsedData.value);
-          }
-        } catch (parseError) {
-          console.log('Data parsing error:', parseError);
-        }
-      }
-    });
-  };
+        );
+        console.log('Monitoring set up successfully.');
+      } else {
+        const server = await BLEManager.connect(device);
+        setConnectedServer(server);
+        setConnectedDevice(device);
+        Alert.alert('Connected', `Connected to ${device.name}`);
+        setTargetTempServiceUUID(SERVICE_UUID);
+        setTargetTempCharUUID(TEMPERATURE_CHAR_UUID);
 
-  const subscribeToFaults = (device: Device, serviceUUID: string, charUUID: string) => {
-    device.monitorCharacteristicForService(serviceUUID, charUUID, (error, characteristic) => {
-      if (error) {
-        console.log('Faults subscription error:', error);
-        return;
-      }
-
-      if (characteristic?.value) {
-        const data = base64.decode(characteristic.value);
-        try {
-          const parsedData = JSON.parse(data);
-          if (parsedData.type === 'faults') {
-            setFaults(parsedData.value);
+        await BLEManager.monitorCharacteristic(
+          server,
+          SERVICE_UUID,
+          TEMPERATURE_CHAR_UUID,
+          (data: string) => {
+            console.log(`Data received from Temperature Control characteristic: ${data}`);
+            const [tempStr, pressureStr] = data.split(',').map((s) => s.trim());
+            const temp = parseFloat(tempStr);
+            const pressureVal = parseFloat(pressureStr);
+            if (!isNaN(temp) && !isNaN(pressureVal)) {
+              setTemperature(temp);
+              setPressure(pressureVal);
+              console.log(`Parsed temperature: ${temp}°F, pressure: ${pressureVal} hPa`);
+            } else {
+              console.warn('Received invalid data format:', data);
+            }
           }
-        } catch (parseError) {
-          console.log('Data parsing error:', parseError);
-        }
+        );
+        console.log('Monitoring set up successfully.');
       }
-    });
+    } catch (error: any) {
+      console.error('Connection error:', error);
+      Alert.alert('Connection Error', error.message);
+    }
   };
 
   const sendTargetTemperature = async () => {
+    console.log('Attempting to send target temperature...');
     if (!connectedDevice) {
-      Alert.alert('No device connected', 'Please connect to a device first');
-      return;
-    }
-
-    if (!targetTemp) {
-      Alert.alert('Input required', 'Please enter a target temperature');
-      return;
-    }
-
-    const targetChar = characteristicsMap.targetTemp;
-    if (!targetChar) {
-      Alert.alert('Characteristic not found', 'Target temperature characteristic not found');
-      return;
-    }
-
-    try {
-      const { serviceUUID, charUUID } = targetChar;
-      const command = { type: 'setTargetTemperature', value: parseFloat(targetTemp) };
-      const commandData = JSON.stringify(command);
-      await connectedDevice.writeCharacteristicWithResponseForService(
-        serviceUUID,
-        charUUID,
-        base64.encode(commandData)
-      );
-      Alert.alert('Success', 'Target temperature set.');
-      setTargetTemp('');
-    } catch (error: any) {
-      console.log('Error writing target temperature:', error);
-      Alert.alert('Write error', error.message);
-    }
-  };
-
-  const disconnectDevice = async () => {
-    if (connectedDevice) {
-      try {
-        await connectedDevice.cancelConnection();
-        setConnectedDevice(null);
-        setTemperature(null);
-        setFaults('');
-        setCharacteristicsMap({});
-      } catch (error: any) {
-        console.log('Disconnection error:', error);
-        Alert.alert('Disconnection error', error.message);
-      }
-    }
-  };
-
-  const renderDevice = ({ item }: { item: Device }) => (
-    <TouchableOpacity
-      style={styles.deviceItem}
-      onPress={() => connectToDevice(item)}
-    >
-      <Text style={styles.deviceName}>{item.name}</Text>
-      <Text style={styles.deviceId}>{item.id}</Text>
-    </TouchableOpacity>
-  );
-
-  return (
-    <SafeAreaView style={styles.container}>
-      {!connectedDevice ? (
-        <View style={styles.scanContainer}>
-          <Text style={styles.title}>Available Devices:</Text>
-          <FlatList
-            data={devices}
-            keyExtractor={(item) => item.id}
-            renderItem={renderDevice}
-            ListEmptyComponent={<Text style={styles.noDevices}>No devices found.</Text>}
-          />
-        </View>
-      ) : (
-        <View style={styles.deviceContainer}>
-          <Text style={styles.title}>Connected to {connectedDevice.name}</Text>
-          <Text style={styles.info}>
-            Current Temperature: {temperature !== null ? `${temperature}°C` : 'N/A'}
-          </Text>
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Set Target Temperature:</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={targetTemp}
-              onChangeText={setTargetTemp}
-              placeholder="e.g., 25"
-            />
-            <Button title="Set" onPress={sendTargetTemperature} />
-          </View>
-          <View style={styles.faultContainer}>
-            <Text style={styles.faultTitle}>Faults Detected:</Text>
-            <Text style={styles.faultText}>{faults || 'No faults detected'}</Text>
-          </View>
-          <Button title="Disconnect" color="#FF5C5C" onPress={disconnectDevice} />
-        </View>
-      )}
-    </SafeAreaView>
-  );
-};
-//non finalized, we can discuss design and how important it is
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  scanContainer: {
-    flex: 1,
-  },
-  deviceContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  deviceItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderColor: '#ccc',
-  },
-  deviceName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  deviceId: {
-    fontSize: 12,
-    color: '#666',
-  },
-  title: {
-    fontSize: 22,
-    marginBottom: 12,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  info: {
-    fontSize: 18,
-    marginVertical: 8,
-  },
-  inputContainer: {
-    marginVertical: 12,
-    alignItems: 'center',
-    width: '80%',
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 8,
-    width: '100%',
-    textAlign: 'center',
-    marginBottom: 8,
-    borderRadius: 4,
-  },
-  faultContainer: {
-    marginVertical: 12,
-    padding: 12,
-    backgroundColor: '#fff3cd',
-    borderRadius: 8,
-    width: '90%',
-  },
-  faultTitle: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-    color: '#856404',
-  },
-  faultText: {
-    color: '#856404',
-  },
-  noDevices: {
-    textAlign: 'center',
-    color: '#888',
-    marginTop: 20,
-  },
-});
-
-export default App;
+      console.warn('No device connected. Cannot send temperature.');
+      Alert.alert('No Device', 'Please
