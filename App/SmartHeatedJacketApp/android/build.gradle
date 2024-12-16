@@ -4,8 +4,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.1.1") // Ensure this matches your Gradle version
-        // ... other classpath dependencies
+        classpath("com.android.tools.build:gradle:8.1.1")
     }
 }
 
@@ -14,10 +13,9 @@ allprojects {
         mavenCentral()
         google()
         maven { url("$rootDir/../node_modules/react-native/android") }
-        // Add any other necessary repositories here
     }
     ext {
-    reactNativeVersion = rootProject.ext.reactNativeVersion ?: "0.71.0" // Replace with your RN version
+    reactNativeVersion = rootProject.ext.reactNativeVersion ?: "0.71.0"
 }
 
 }
